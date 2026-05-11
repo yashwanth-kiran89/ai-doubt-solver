@@ -29,11 +29,27 @@ export default function DoubtHistory() {
       if (filters.difficulty) params.append('difficulty', filters.difficulty);
       if (filters.search) params.append('search', filters.search);
       
-      const data = await doubtAPI.getHistory(params);
-      setDoubts(data);
+      const response = await doubtAPI.getHistory(params);
+      
+      // FIX: Handle both array and object responses
+      let doubtsArray = [];
+      if (Array.isArray(response)) {
+        doubtsArray = response;
+      } else if (response && Array.isArray(response.data)) {
+        doubtsArray = response.data;
+      } else if (response && response.doubts && Array.isArray(response.doubts)) {
+        doubtsArray = response.doubts;
+      } else if (response && typeof response === 'object') {
+        // If it's an object but not an array, try to extract
+        console.log('Response structure:', response);
+        doubtsArray = [];
+      }
+      
+      setDoubts(doubtsArray);
     } catch (error) {
       console.error('Fetch doubts error:', error);
       toast.error('Failed to load doubt history');
+      setDoubts([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -63,6 +79,7 @@ export default function DoubtHistory() {
   const subjects = [...new Set(doubts.map(d => d.subject).filter(Boolean))];
 
   const timeAgo = (date) => {
+    if (!date) return 'unknown';
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
     if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);
@@ -90,63 +107,65 @@ export default function DoubtHistory() {
           </Link>
         </div>
 
-        {/* Search & Filters */}
-        <div className="card mb-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search doubts..."
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                className="input-field pl-9"
-              />
+        {/* Search & Filters - Only show if there are doubts */}
+        {doubts.length > 0 && (
+          <div className="card mb-6">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search doubts..."
+                  value={filters.search}
+                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                  className="input-field pl-9"
+                />
+              </div>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="btn-secondary flex items-center gap-2"
+              >
+                <Filter className="w-4 h-4" />
+                Filters
+                {(filters.subject || filters.difficulty) && (
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                )}
+              </button>
             </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              Filters
-              {(filters.subject || filters.difficulty) && (
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              )}
-            </button>
-          </div>
 
-          {showFilters && (
-            <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100">
-              <select
-                value={filters.subject}
-                onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
-                className="input-field w-auto min-w-[140px] text-sm"
-              >
-                <option value="">All Subjects</option>
-                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select
-                value={filters.difficulty}
-                onChange={(e) => setFilters({ ...filters, difficulty: e.target.value })}
-                className="input-field w-auto min-w-[140px] text-sm"
-              >
-                <option value="">All Difficulties</option>
-                <option value="Easy">Easy</option>
-                <option value="Medium">Medium</option>
-                <option value="Hard">Hard</option>
-              </select>
-              {(filters.subject || filters.difficulty) && (
-                <button
-                  onClick={() => setFilters({ subject: '', difficulty: '', search: '' })}
-                  className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            {showFilters && (
+              <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100">
+                <select
+                  value={filters.subject}
+                  onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+                  className="input-field w-auto min-w-[140px] text-sm"
                 >
-                  <X className="w-3 h-3" />
-                  Clear all
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+                  <option value="">All Subjects</option>
+                  {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select
+                  value={filters.difficulty}
+                  onChange={(e) => setFilters({ ...filters, difficulty: e.target.value })}
+                  className="input-field w-auto min-w-[140px] text-sm"
+                >
+                  <option value="">All Difficulties</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+                {(filters.subject || filters.difficulty) && (
+                  <button
+                    onClick={() => setFilters({ subject: '', difficulty: '', search: '' })}
+                    className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear all
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Doubts List */}
         {loading ? (
@@ -170,14 +189,14 @@ export default function DoubtHistory() {
         ) : (
           <div className="space-y-4">
             {doubts.map((doubt) => (
-              <div key={doubt._id} className="card hover:shadow-md transition-all duration-200">
+              <div key={doubt._id || Math.random()} className="card hover:shadow-md transition-all duration-200">
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div className="flex flex-wrap gap-2">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                      {doubt.subject}
+                      {doubt.subject || 'General'}
                     </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${difficultyColors[doubt.difficulty]}`}>
-                      {doubt.difficulty}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${difficultyColors[doubt.difficulty] || 'bg-gray-100 text-gray-700'}`}>
+                      {doubt.difficulty || 'Medium'}
                     </span>
                     {doubt.tags?.slice(0, 3).map(tag => (
                       <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
@@ -224,11 +243,11 @@ export default function DoubtHistory() {
                   </div>
                 )}
 
-                <h3 className="font-semibold text-gray-900 mb-2">{doubt.question}</h3>
+                <h3 className="font-semibold text-gray-900 mb-2">{doubt.question || 'No question'}</h3>
                 
                 <div className="bg-gray-50 rounded-xl p-4 mb-3">
                   <p className="text-sm text-gray-700 font-medium mb-1">Answer:</p>
-                  <p className="text-sm text-gray-600">{doubt.answer}</p>
+                  <p className="text-sm text-gray-600">{doubt.answer || 'No answer available'}</p>
                   {doubt.explanation && (
                     <>
                       <p className="text-sm text-gray-700 font-medium mt-3 mb-1">Explanation:</p>
