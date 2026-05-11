@@ -10,6 +10,7 @@ const path = require('path');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const doubtRoutes = require('./routes/doubtRoutes');  // ✅ ADD THIS
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -55,16 +56,15 @@ app.use('/api/auth', authRoutes);
 console.log('✓ Auth routes registered at /api/auth');
 app.use('/api/chats', chatRoutes);
 console.log('✓ Chat routes registered at /api/chats');
-
+app.use('/api/doubts', doubtRoutes);  // ✅ ADD THIS
+console.log('✓ Doubt routes registered at /api/doubts');
 // 404 handler
 app.use('*', (req, res) => {
   console.log(`404: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
 });
-
 // Global error handler
 app.use(errorHandler);
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
