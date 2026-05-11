@@ -1,18 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, Image, Upload, X, Loader2, Brain, Mic, FileText } from 'lucide-react';
-import axios from 'axios';
 import Navbar from '../components/Layout/Navbar';
 import toast from 'react-hot-toast';
-
-const API_BASE = '/api';
-const api = axios.create({ baseURL: API_BASE });
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+import { doubtAPI } from '../services/api';
 
 const SUBJECTS = ['General', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'History', 'English', 'Computer Science'];
 
@@ -60,16 +51,13 @@ export default function AskDoubt() {
         if (question.trim()) formData.append('question', question);
         if (subject) formData.append('subject', subject);
         
-        const { data } = await api.post('/doubts/ask-with-image', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          timeout: 90000,
-        });
+        await doubtAPI.askWithImage(formData);
         
         toast.success('Doubt solved!');
         navigate('/doubt-history');
       } else {
         // Text-only doubt
-        const { data } = await api.post('/doubts/ask', {
+        await doubtAPI.ask({
           question: question.trim(),
           subject,
         });

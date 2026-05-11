@@ -30,6 +30,15 @@ api.interceptors.response.use(
   }
 );
 
+// Helper function to get full image URL
+export const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  // Use your Render backend URL
+  const BACKEND_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://ai-doubt-solver-277b.onrender.com';
+  return `${BACKEND_URL}${imagePath}`;
+};
+
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
@@ -70,13 +79,14 @@ export const chatAPI = {
 
 export const doubtAPI = {
   ask: (data) => api.post('/doubts/ask', data),
+  askWithImage: (formData) => api.post('/doubts/ask-with-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 90000,
+  }),
   getHistory: (params) => api.get('/doubts/history', { params }),
   getById: (id) => api.get(`/doubts/${id}`),
   markHelpful: (id, isHelpful) => api.patch(`/doubts/${id}/helpful`, { isHelpful }),
   delete: (id) => api.delete(`/doubts/${id}`),
-  analyzeImage: (formData) => api.post('/doubts/analyze-image', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
   followUp: (id, question) => api.post(`/doubts/${id}/followup`, { question }),
 };
 

@@ -1,19 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, BookOpen, ThumbsUp, ThumbsDown, Brain, Calendar, Filter, X } from 'lucide-react';
-import axios from 'axios';
 import Navbar from '../components/Layout/Navbar';
 import toast from 'react-hot-toast';
-
-const API_BASE = '/api';
-
-const api = axios.create({ baseURL: API_BASE });
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+import { doubtAPI, getImageUrl } from '../services/api';
 
 const difficultyColors = {
   Easy: 'bg-green-100 text-green-700',
@@ -39,9 +29,10 @@ export default function DoubtHistory() {
       if (filters.difficulty) params.append('difficulty', filters.difficulty);
       if (filters.search) params.append('search', filters.search);
       
-      const { data } = await api.get(`/doubts/history?${params}`);
+      const data = await doubtAPI.getHistory(params);
       setDoubts(data);
     } catch (error) {
+      console.error('Fetch doubts error:', error);
       toast.error('Failed to load doubt history');
     } finally {
       setLoading(false);
@@ -50,7 +41,7 @@ export default function DoubtHistory() {
 
   const markHelpful = async (id, isHelpful) => {
     try {
-      await api.patch(`/doubts/${id}/helpful`, { isHelpful });
+      await doubtAPI.markHelpful(id, isHelpful);
       toast.success('Thanks for your feedback!');
       fetchDoubts();
     } catch {
@@ -61,7 +52,7 @@ export default function DoubtHistory() {
   const deleteDoubt = async (id) => {
     if (!confirm('Delete this doubt?')) return;
     try {
-      await api.delete(`/doubts/${id}`);
+      await doubtAPI.delete(id);
       toast.success('Doubt deleted');
       fetchDoubts();
     } catch {
@@ -217,6 +208,21 @@ export default function DoubtHistory() {
                     </button>
                   </div>
                 </div>
+
+                {/* Image Display - FIXED with correct URL */}
+                {doubt.imageUrl && (
+                  <div className="mt-3 mb-3">
+                    <img 
+                      src={getImageUrl(doubt.imageUrl)}
+                      alt="Doubt related" 
+                      className="h-32 rounded-lg border border-gray-200 object-contain bg-gray-50"
+                      onError={(e) => {
+                        e.target.src = 'https://via.placeholder.com/150?text=Image+Not+Found';
+                        e.target.onerror = null;
+                      }}
+                    />
+                  </div>
+                )}
 
                 <h3 className="font-semibold text-gray-900 mb-2">{doubt.question}</h3>
                 
