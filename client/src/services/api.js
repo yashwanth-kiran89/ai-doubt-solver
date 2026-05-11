@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE = '/api';
+// Use environment variable - THIS IS THE KEY CHANGE
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -67,7 +68,6 @@ export const chatAPI = {
   },
 };
 
-// ADD THIS - Doubt API methods
 export const doubtAPI = {
   ask: (data) => api.post('/doubts/ask', data),
   getHistory: (params) => api.get('/doubts/history', { params }),
